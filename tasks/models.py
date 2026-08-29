@@ -15,27 +15,33 @@ class TaskStatus(models.TextChoices):
 class Task(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
+    # Должна знать команду, так как задания относятся к ней.
     team = models.ForeignKey(
         "teams.Team",
         related_name='tasks',
         on_delete=models.CASCADE,
     )
+    # Храним также тех кто их создал
     created_by = models.ForeignKey(
         'profiles.Profile',
         related_name='created_tasks',
         on_delete=models.CASCADE,
     )
-
+    # И кому назначили
     assignee = models.ForeignKey(
         'profiles.Profile',
         related_name='assigned_tasks',
         on_delete=models.CASCADE,
     )
+    # Дату назначения
     due_date = models.DateTimeField()
     status = models.CharField(choices=TaskStatus.choices, max_length=15, default=TaskStatus.OPEN)
 
     def __str__(self):
         return f"{self.title}: {self.assignee} до {self.due_date}"
+
+    class Meta:
+        ordering = ['title', 'due_date']
 
 
 class TaskComment(models.Model):

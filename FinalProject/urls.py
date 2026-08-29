@@ -19,6 +19,7 @@ from django.urls import path, include
 from rest_framework import routers
 
 from profiles.views import ProfileViewSet
+from tasks.views import TaskViewSet
 from teams.views import TeamViewSet, MembershipViewSet
 from rest_framework_nested.routers import NestedSimpleRouter
 
@@ -26,8 +27,14 @@ router = routers.DefaultRouter()
 router.register('teams', TeamViewSet, 'teams')
 router.register('users', ProfileViewSet, 'users')
 
+router.register('tasks', TaskViewSet, 'tasks')
 teams_router = NestedSimpleRouter(router, r'teams', lookup='team')
 teams_router.register(r'members', MembershipViewSet, basename='team-members')
+teams_router.register(
+    r'tasks',
+    TaskViewSet,
+    basename='team-tasks',
+)
 
 urlpatterns = [
     path('api/v1/', include(router.urls)),
