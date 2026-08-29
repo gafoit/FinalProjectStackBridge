@@ -1,0 +1,36 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}LMS{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body>
+<header class="site-header">
+    <form method="get" action="{% url 'profile' %}">
+        {% csrf_token %}
+        <button type="submit">Профиль</button>
+    </form>
+
+    <form method="get" action="{% url 'teams' %}">
+        {% csrf_token %}
+        <button type="submit">Команды</button>
+    </form>
+
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Выйти</button>
+    </form>
+</header>
+<main>
+    {% block content %}
+    {% endblock %}
+</main>
+</body>
+</html>
