@@ -32,7 +32,7 @@ class Team(models.Model):
 class Membership(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='memberships')
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='memberships')
-    role = models.CharField(max_length=7, choices=Roles.choices, default=Roles.member)
+    role = models.TextField(max_length=7, choices=Roles.choices, default=Roles.member)
 
     def __str__(self):
         return f'{self.team.name}[{self.profile.username}: {self.role}]'

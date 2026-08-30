@@ -23,11 +23,6 @@ class MembershipPerms(BasePermission):
 
         if current is None:
             return False
-
-        # Можно работать со своей membership
-        if obj.profile == request.user.profile:
-            return True
-
         current_priority = role_priority[current.role]
         target_priority = role_priority[obj.role]
 
@@ -37,7 +32,7 @@ class MembershipPerms(BasePermission):
             if new_role is None:
                 return current_priority >= role_priority[Roles.admin]
 
-            new_priority = role_priority.get(new_role)
+            new_priority = role_priority.get(new_role, None)
 
             if new_priority is None:
                 return False
@@ -51,7 +46,8 @@ class MembershipPerms(BasePermission):
             return (
                     current_priority >= target_priority
                     and current.role != Roles.member
-            )
+            ) or obj.profile == request.user.profile
+
         return True
 
 

@@ -6,16 +6,18 @@ from rest_framework.response import Response
 
 from teams.models import Team, Membership, Roles
 from teams.permissions import MembershipPerms, TeamPerms
-from teams.serializers.Teams import TeamShortSerializer, TeamSerializer, JoinTeamSerializer, NewMembershipSerializer, \
-    MembershipSerializer, MembershipRoleChangeSerializer
+from teams.serializers import TeamShortSerializer, TeamSerializer, JoinTeamSerializer, MembershipSerializer, \
+    MembershipRoleChangeSerializer, TeamUpdateSerializer
 
 
 # Create your views here.
 
 
 class TeamViewSet(viewsets.ModelViewSet):
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
     def get_queryset(self):
-        if self.action in ('list', 'retrieve'):
+        if self.action in ('list', 'retrieve', 'update', 'partial_update'):
             return Team.objects.filter(profiles=self.request.user.profile)
         return Team.objects.none()
 
@@ -30,7 +32,7 @@ class TeamViewSet(viewsets.ModelViewSet):
                 team_id=self.kwargs['pk'],
                 profile=self.request.user.profile,
             )
-
+            # Приглашать могут только эти роли
             if membership.role in (
                     Roles.manager,
                     Roles.admin,
@@ -38,6 +40,8 @@ class TeamViewSet(viewsets.ModelViewSet):
             ):
                 return TeamSerializer
             return TeamShortSerializer
+        elif self.action == 'partial_update':
+            return TeamUpdateSerializer
         elif self.action == 'join':
             return JoinTeamSerializer
         else:
@@ -64,7 +68,7 @@ class TeamViewSet(viewsets.ModelViewSet):
             )
         # Атомарность не нужна т.к создаём только membership
         membership = Membership.objects.create(team=team, profile=profile, role=Roles.member)
-        return Response(NewMembershipSerializer(membership).data)
+        return Response(self.get_serializer(team).data)
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -89,13 +93,11 @@ class MembershipViewSet(viewsets.ModelViewSet):
         return [MembershipPerms()]
 
     def get_serializer_class(self):
-        if self.action == 'partial_update':
+        if self.action in ['update', 'partial_update']:
             return MembershipRoleChangeSerializer
         return super().get_serializer_class()
 
-
-    #def get_object(self):
+    # def get_object(self):
     #    team_id = self.kwargs.get('team_pk')
     #    profile_id = self.kwargs.get('profile_id')
     #    return self.get_queryset().get(team_id=team_id, profile_id=profile_id)
-

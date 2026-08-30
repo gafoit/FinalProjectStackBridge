@@ -3,7 +3,7 @@ from rest_framework import serializers
 from profiles.models import Profile
 from profiles.serializers.Profile import ProfileSerializer
 from tasks.models import Task, TaskStatus
-from teams.models import Membership
+from teams.models import Membership, Roles
 from teams.serializers.Teams import TeamShortSerializer
 
 
@@ -37,6 +37,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         queryset=Profile.objects.all(),
         required=True,
     )
+
     class Meta:
         model = Task
         fields = (
@@ -45,6 +46,12 @@ class TaskCreateSerializer(serializers.ModelSerializer):
             'assignee',
             'due_date',
         )
+
+    def validate(self, attrs):
+        print(self.context['view'].kwargs)
+        if not Membership.objects.filter(profile=attrs.get("assignee"), team=self.context['view'].kwargs['team_pk']).exists():
+            raise serializers.ValidationError('Нельзя назначить человека который не состоит в данной команде')
+        return attrs
 
 
 class TaskUpdateSerializer(serializers.ModelSerializer):
@@ -64,3 +71,21 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
             'due_date',
             'status',
         )
+
+        extra_kwargs = {
+            'title': {'required': False},
+            'description': {'required': False},
+            'assignee': {'required': False},
+            'due_date': {'required': False},
+        }
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        task = self.instance
+
+        membership = Membership.objects.get(profile=request.user.profile, team=task.team)
+
+        if membership.role == Roles.member and task.created_by != request.user.profile:
+            if set(attrs) != {'status'}:
+                raise serializers.ValidationError('Участник может изменить только статус выполнения задачи')
+        return attrs
