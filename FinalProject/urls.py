@@ -28,6 +28,7 @@ router.register('teams', TeamViewSet, 'teams')
 router.register('users', ProfileViewSet, 'users')
 
 router.register('tasks', TaskViewSet, 'tasks')
+# NestedRouters для красоты.
 teams_router = NestedSimpleRouter(router, r'teams', lookup='team')
 teams_router.register(r'members', MembershipViewSet, basename='team-members')
 teams_router.register(
@@ -40,12 +41,5 @@ urlpatterns = [
     path('api/v1/', include(router.urls)),
     path('api/v1/', include(teams_router.urls)),
     path("api/v1/auth/", include("rest_framework.urls"), name="api_v1"),
-
-    # path('auth/login/', LoginView.as_view(
-    #    template_name='registration/login.html'), name='login'),
-    # path('auth/logout/', LogoutView.as_view(next_page='login'), name='logout'),
-    # path('auth/password/', PasswordChangeView.as_view(
-    #    template_name='registration/pwd_change.html', success_url='login'), name='password_change'),
-
     path('admin/', admin.site.urls),
 ]

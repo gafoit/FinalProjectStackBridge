@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models.functions import uuid
 from rest_framework import viewsets, serializers, status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -17,7 +18,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
-        if self.action in ('list', 'retrieve', 'update', 'partial_update'):
+        if self.action in ('list', 'retrieve', 'update', 'partial_update', 'regen_invite_code'):
             return Team.objects.filter(profiles=self.request.user.profile)
         return Team.objects.none()
 
@@ -27,19 +28,22 @@ class TeamViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['list', 'create']:
             return TeamShortSerializer
-        elif self.action == 'retrieve':
-            membership = Membership.objects.get(
-                team_id=self.kwargs['pk'],
-                profile=self.request.user.profile,
-            )
-            # Приглашать могут только эти роли
-            if membership.role in (
-                    Roles.manager,
-                    Roles.admin,
-                    Roles.owner,
-            ):
+        elif self.action in ['retrieve', 'regen_invite_code']:
+            if self.action == 'retrieve':
+                membership = Membership.objects.get(
+                    team_id=self.kwargs['pk'],
+                    profile=self.request.user.profile,
+                )
+                # Приглашать могут только эти роли
+                if membership.role in (
+                        Roles.manager,
+                        Roles.admin,
+                        Roles.owner,
+                ):
+                    return TeamSerializer
+                return TeamShortSerializer
+            else:
                 return TeamSerializer
-            return TeamShortSerializer
         elif self.action == 'partial_update':
             return TeamUpdateSerializer
         elif self.action == 'join':
@@ -78,6 +82,13 @@ class TeamViewSet(viewsets.ModelViewSet):
         team = serializer.save()
         Membership.objects.create(team=team, profile=profile, role=Roles.owner)
         return Response(TeamSerializer(team).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_name='change_invite_code', url_path='invite_code')
+    def regen_invite_code(self, request, *args, **kwargs):
+        team = self.get_object()
+        team.invite_code = uuid.UUID4()
+        team.save(update_fields=['invite_code'])
+        return Response(self.get_serializer(team).data, status=status.HTTP_200_OK)
 
 
 class MembershipViewSet(viewsets.ModelViewSet):

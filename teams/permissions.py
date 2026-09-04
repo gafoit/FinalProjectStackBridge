@@ -23,6 +23,7 @@ class MembershipPerms(BasePermission):
 
         if current is None:
             return False
+
         current_priority = role_priority[current.role]
         target_priority = role_priority[obj.role]
 
@@ -72,6 +73,8 @@ class TeamPerms(BasePermission):
             current_membership = Membership.objects.get(team=obj, profile=profile)
         except Membership.DoesNotExist:
             return False
+        if view.action == 'regen_invite_code':
+            return role_priority[current_membership.role] >= role_priority[Roles.admin]
 
         if view.action in ('update', 'partial_update'):
             return current_membership.role in (Roles.admin, Roles.owner)
