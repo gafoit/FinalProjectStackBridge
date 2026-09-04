@@ -1,5 +1,7 @@
 from django.db import transaction
 from django.db.models.functions import uuid
+from django.urls import reverse
+from django.views.generic import RedirectView
 from rest_framework import viewsets, serializers, status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -89,6 +91,17 @@ class TeamViewSet(viewsets.ModelViewSet):
         team.invite_code = uuid.UUID4()
         team.save(update_fields=['invite_code'])
         return Response(self.get_serializer(team).data, status=status.HTTP_200_OK)
+
+
+class TeamTaskCommentsRedirectView(RedirectView):
+    permanent = False  # 302
+
+    def get_redirect_url(self, *args, **kwargs):
+        task_id = kwargs['task_id']
+        team_id = kwargs['team_id']
+        base_url = reverse('task-comments-list', kwargs={'task_pk': task_id})
+        #return f'{base_url}?team_pk={team_id}'
+        return f'{base_url}'
 
 
 class MembershipViewSet(viewsets.ModelViewSet):

@@ -7,6 +7,7 @@ from tasks.models import Task, TaskStatus, TaskComment, TaskRating
 from tasks.permissions import TaskPermissions
 # from tasks.permissions import CanEditTask
 from tasks.serializers import TaskSerializer, TaskUpdateSerializer, TaskCreateSerializer
+from tasks.serializers.TaskComment import TaskCommentSerializer, TaskCommentShortSerializer
 from teams.models import Team
 
 
@@ -61,3 +62,16 @@ class TaskViewSet(viewsets.ModelViewSet):
             team_id=team_id,
             created_by=self.request.user.profile,
         )
+
+
+class TaskCommentViewSet(viewsets.ModelViewSet):
+    def get_queryset(self):
+        queryset = TaskComment.objects.filter(task=self.kwargs['task_pk'])
+        return queryset
+
+    def get_serializer_class(self):
+        if self.action in ['retrieve']:
+            return TaskCommentSerializer
+        else:
+            return TaskCommentShortSerializer
+

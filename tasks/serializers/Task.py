@@ -48,7 +48,6 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        print(self.context['view'].kwargs)
         if not Membership.objects.filter(profile=attrs.get("assignee"), team=self.context['view'].kwargs['team_pk']).exists():
             raise serializers.ValidationError('Нельзя назначить человека который не состоит в данной команде')
         return attrs
