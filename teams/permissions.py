@@ -1,6 +1,7 @@
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import BasePermission
 
-from teams.models import Membership, Roles, role_priority
+from teams.models import Membership, Roles, role_priority, Team
 
 
 class MembershipPerms(BasePermission):
@@ -54,16 +55,18 @@ class MembershipPerms(BasePermission):
 
 class TeamPerms(BasePermission):
     def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
         if view.action == 'retrieve':
             team_id = view.kwargs.get('pk')
 
             if not team_id:
                 return False
+            team = get_object_or_404(Team, pk=team_id)
             return Membership.objects.filter(
-                team_id=team_id,
+                team=team,
                 profile=request.user.profile
             ).exists()
-
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
@@ -72,7 +75,7 @@ class TeamPerms(BasePermission):
         try:
             current_membership = Membership.objects.get(team=obj, profile=profile)
         except Membership.DoesNotExist:
-            return False
+            return view.action == 'join'
         if view.action == 'regen_invite_code':
             return role_priority[current_membership.role] >= role_priority[Roles.admin]
 

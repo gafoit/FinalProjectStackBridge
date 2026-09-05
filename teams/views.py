@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.db.models.functions import uuid
-from django.urls import reverse
+from rest_framework.reverse import reverse
 from django.views.generic import RedirectView
 from rest_framework import viewsets, serializers, status
 from rest_framework.decorators import action
@@ -20,9 +20,10 @@ class TeamViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
-        if self.action in ('list', 'retrieve', 'update', 'partial_update', 'regen_invite_code', 'destroy'):
-            return Team.objects.filter(profiles=self.request.user.profile)
-        return Team.objects.none()
+        qs = Team.objects.all()
+        if self.action != 'join':
+            qs = qs.filter(profiles=self.request.user.profile)
+        return qs
 
     def get_permissions(self):
         return [TeamPerms()]
@@ -55,10 +56,7 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_name='join')
     def join(self, request, *args, **kwargs):
-        team = get_object_or_404(
-            Team,
-            pk=self.kwargs['pk'],
-        )
+        team = self.get_object()
         profile = self.request.user.profile
         serializer = JoinTeamSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -72,9 +70,22 @@ class TeamViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError(
                 'Пользователь уже состоит в команде'
             )
-        # Атомарность не нужна т.к создаём только membership
+        # Атомарность не обязательна так как создаём только membership
         membership = Membership.objects.create(team=team, profile=profile, role=Roles.member)
-        return Response(self.get_serializer(team).data)
+        # Редирект для красоты и удобства работы
+        url = reverse(
+            'team-members-detail',
+            kwargs={
+                'team_pk': team.pk,
+                'profile_id': membership.profile_id,
+            },
+            request=request,
+        )
+
+        return Response(
+            status=status.HTTP_303_SEE_OTHER,
+            headers={'Location': url},
+        )
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -98,7 +109,6 @@ class TeamTaskCommentsRedirectView(RedirectView):
 
     def get_redirect_url(self, *args, **kwargs):
         task_id = kwargs['task_id']
-        team_id = kwargs['team_id']
         base_url = reverse('task-comments-list', kwargs={'task_pk': task_id})
         # return f'{base_url}?team_pk={team_id}'
         return f'{base_url}'

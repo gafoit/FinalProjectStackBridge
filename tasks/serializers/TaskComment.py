@@ -19,7 +19,7 @@ class TaskCommentShortSerializer(serializers.ModelSerializer):
     text = serializers.SerializerMethodField()
 
     def get_text(self, obj):
-        return shorten(obj.text, width=150, break_long_words=False, placeholder='')
+        return shorten(obj.text, width=50, break_long_words=True, placeholder='...')
 
     class Meta:
         model = TaskComment
@@ -30,4 +30,3 @@ class TaskCommentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskComment
         fields = ('text',)
-
