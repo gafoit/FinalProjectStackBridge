@@ -1,9 +1,11 @@
 from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
 
 from profiles.models import Profile
 from profiles.serializers.Profile import ProfileSerializer
 from tasks.models import Task, TaskStatus
-from teams.models import Membership, Roles
+from teams.models import Membership, Roles, Team
+from teams.serializers import Teams
 from teams.serializers.Teams import TeamShortSerializer
 
 
@@ -38,6 +40,21 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         required=True,
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        team = get_object_or_404(
+            Team,
+            pk=self.context['view'].kwargs['team_pk'],
+        )
+
+        self.fields['assignee'].queryset = (
+            Profile.objects
+            .filter(memberships__team=team)
+        )
+
+
+
     class Meta:
         model = Task
         fields = (
@@ -48,8 +65,12 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        if not Membership.objects.filter(profile=attrs.get("assignee"), team=self.context['view'].kwargs['team_pk']).exists():
-            raise serializers.ValidationError('Нельзя назначить человека который не состоит в данной команде')
+        team_id = self.context['view'].kwargs['team_pk']
+        assignee = attrs['assignee']
+        if not Membership.objects.filter(team_id=team_id, profile=assignee, ).exists():
+            raise serializers.ValidationError(
+                {'assignee': 'Нельзя назначить человека, который не состоит в данной команде.'}
+            )
         return attrs
 
 
@@ -59,6 +80,20 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
         queryset=Profile.objects.all(),
         required=False,  # Делаем необязательным для PATCH-запросов
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        team = get_object_or_404(
+            Team,
+            pk=self.context['view'].kwargs['team_pk'],
+        )
+
+        self.fields['assignee'].queryset = (
+            Profile.objects
+            .filter(memberships__team=team)
+        )
+
 
     class Meta:
         model = Task
@@ -87,4 +122,12 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
         if membership.role == Roles.member and task.created_by != request.user.profile:
             if set(attrs) != {'status'}:
                 raise serializers.ValidationError('Участник может изменить только статус выполнения задачи')
+        assignee = attrs.get('assignee')
+        if assignee is not None:
+            if not Membership.objects.filter(team=task.team, profile=assignee, ).exists():
+                raise serializers.ValidationError(
+                    {
+                        'assignee': 'Нельзя назначить человека, который не состоит в данной команде.'
+                    }
+                )
         return attrs

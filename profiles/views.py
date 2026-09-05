@@ -12,12 +12,9 @@ from profiles.serializers.Profile import ProfileSerializer, ProfileCreateSeriali
 
 class ProfileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
-        if self.action == 'list':
+        if self.action in ['list','retrieve','me']:
             return Profile.objects.all()
-        elif self.action == 'me':
-            return Profile.objects.get(user=self.request.user)
-        else:
-            return Profile.objects.none()
+        return Profile.objects.none()
 
     def get_serializer_class(self):
         if self.action == 'create':

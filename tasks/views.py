@@ -20,16 +20,9 @@ class TaskViewSet(viewsets.ModelViewSet):
         queryset = Task.objects.all()
 
         team_id = self.kwargs.get('team_pk')
-        if team_id:
-            queryset = queryset.filter(team_id=team_id)
-        else:
-
-            queryset = queryset.filter(team__memberships__profile=self.request.user.profile)
-
-            filter_team_id = self.request.query_params.get('team')
-
-            if filter_team_id:
-                queryset = queryset.filter(team_id=filter_team_id)
+        if team_id is None:
+            team_id = self.request.GET.get('team')
+        queryset = queryset.filter(team_id=team_id, team__memberships__profile=self.request.user.profile)
         # Чтобы можно было отделить таски которые мне нужно выполнить и которые я сделал для других
         assigned = self.request.GET.get('assigned')
         created = self.request.GET.get('created')

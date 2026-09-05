@@ -10,20 +10,24 @@ class Roles(models.TextChoices):
     member = 'member', 'Участник'
     manager = 'manager', 'Менеджер'
     admin = 'admin', 'Администратор'
-    owner = 'owner', 'Владелец'
 
 
 role_priority = {
     Roles.member: 1,
     Roles.manager: 2,
     Roles.admin: 3,
-    Roles.owner: 4,
 }
 
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
     invite_code = models.UUIDField(default=uuid.UUID4, editable=False, unique=True)
+    # Это стоило сделать сразу, но почему бы не на 6 миграцию
+    owner = models.ForeignKey(
+        Profile,
+        on_delete=models.PROTECT,
+        related_name='owned_teams',
+    )
 
     def __str__(self):
         return self.name

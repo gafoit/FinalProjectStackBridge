@@ -17,6 +17,8 @@ class MembershipPerms(BasePermission):
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
+        if view.action == 'transfer_ownership':
+            return obj.team.owner == request.user.profile
         current = Membership.objects.filter(
             team=obj.team,
             profile=request.user.profile,
@@ -45,10 +47,18 @@ class MembershipPerms(BasePermission):
             )
 
         if view.action == 'destroy':
+            # Если сам себя - выходи
+            if obj.profile == request.user.profile:
+                return True
+            # Админ не может выкинуть владельца и владелец не может выйти без transfer ownership
+            if obj.profile == obj.team.owner:
+                return False
+
             return (
-                    current_priority >= target_priority
-                    and current.role != Roles.member
-            ) or obj.profile == request.user.profile
+                # Если админ - можешь кикать тех кто ниже, остальные не могут кикать вообще
+                    current.role == Roles.admin
+                    and role_priority[current.role] >= role_priority[obj.role]
+            )
 
         return True
 
@@ -77,10 +87,13 @@ class TeamPerms(BasePermission):
         except Membership.DoesNotExist:
             return view.action == 'join'
         if view.action == 'regen_invite_code':
-            return role_priority[current_membership.role] >= role_priority[Roles.admin]
+            return (
+                    obj.owner == profile
+                    or current_membership.role == Roles.admin
+            )
 
         if view.action in ('update', 'partial_update'):
-            return current_membership.role in (Roles.admin, Roles.owner)
+            return current_membership.role == Roles.admin or obj.owner == profile
         if view.action == 'destroy':
-            return current_membership.role == Roles.owner
+            return obj.owner == profile
         return True

@@ -11,7 +11,7 @@ class TaskPermissions(BasePermission):
         if view.action == 'create':
             team_id = view.kwargs.get('team_pk')
             return Membership.objects.filter(team_id=team_id, profile=request.user.profile,
-                                             role__in=[Roles.owner, Roles.admin, Roles.manager]).exists()
+                                             role__in=[Roles.admin, Roles.manager]).exists()
         return True
 
     def has_object_permission(self, request, view, obj):
@@ -23,15 +23,16 @@ class TaskPermissions(BasePermission):
             return True
 
         if view.action == 'destroy':
-            return membership.role in [Roles.admin, Roles.owner]
+            return membership.role == Roles.admin or obj.team.owner == request.user.profile
 
         if view.action in ('update', 'partial_update'):
-            if membership.role in [Roles.admin, Roles.owner]:
+            if membership.role == Roles.admin or obj.team.owner == request.user.profile:
                 return True
 
             if obj.created_by == request.user.profile:
                 return True
-
+            if obj.assignee == request.user.profile:
+                return True
             return membership.role == Roles.member
         return False
 
@@ -57,9 +58,6 @@ class TaskCommentPermissions(BasePermission):
             return obj.author == profile
 
         if request.method == 'DELETE':
-            return membership.role in (
-                Roles.admin,
-                Roles.owner,
-            )
+            return membership.role == Roles.admin or obj.task.team.owner == profile
 
         return False

@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Case, When, Value, IntegerField
 from django.db.models.functions import uuid
 from rest_framework.reverse import reverse
 from django.views.generic import RedirectView
@@ -10,7 +11,7 @@ from rest_framework.response import Response
 from teams.models import Team, Membership, Roles
 from teams.permissions import MembershipPerms, TeamPerms
 from teams.serializers import TeamShortSerializer, TeamSerializer, JoinTeamSerializer, MembershipSerializer, \
-    MembershipRoleChangeSerializer, TeamUpdateSerializer
+    MembershipRoleChangeSerializer, TeamUpdateSerializer, MembershipTransferOwnershipSerializer, TeamCreateSerializer
 
 
 # Create your views here.
@@ -29,8 +30,10 @@ class TeamViewSet(viewsets.ModelViewSet):
         return [TeamPerms()]
 
     def get_serializer_class(self):
-        if self.action in ['list', 'create']:
+        if self.action == 'list':
             return TeamShortSerializer
+        elif self.action in 'create':
+            return TeamCreateSerializer
         elif self.action in ['retrieve', 'regen_invite_code']:
             if self.action == 'retrieve':
                 membership = Membership.objects.get(
@@ -38,19 +41,20 @@ class TeamViewSet(viewsets.ModelViewSet):
                     profile=self.request.user.profile,
                 )
                 # Приглашать могут только эти роли
-                if membership.role in (
-                        Roles.manager,
-                        Roles.admin,
-                        Roles.owner,
+                if (
+                        membership.role in (Roles.manager, Roles.admin)
+                        or membership.team.owner == self.request.user.profile
                 ):
                     return TeamSerializer
                 return TeamShortSerializer
             else:
                 return TeamSerializer
-        elif self.action == 'partial_update':
+        elif self.action in ['partial_update', 'update']:
             return TeamUpdateSerializer
         elif self.action == 'join':
             return JoinTeamSerializer
+        elif self.action == 'transfer_ownership':
+            return MembershipTransferOwnershipSerializer
         else:
             return TeamShortSerializer
 
@@ -92,8 +96,8 @@ class TeamViewSet(viewsets.ModelViewSet):
         profile = self.request.user.profile
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        team = serializer.save()
-        Membership.objects.create(team=team, profile=profile, role=Roles.owner)
+        team = serializer.save(owner=profile)
+        Membership.objects.create(team=team, profile=profile, role=Roles.admin)
         return Response(TeamSerializer(team).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_name='change_invite_code', url_path='invite_code')
@@ -102,6 +106,16 @@ class TeamViewSet(viewsets.ModelViewSet):
         team.invite_code = uuid.UUID4()
         team.save(update_fields=['invite_code'])
         return Response(self.get_serializer(team).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_name='transfer_ownership', url_path='transfer_ownership')
+    @transaction.atomic
+    def transfer_ownership(self, request, *args, **kwargs):
+        team = self.get_object()
+        serializer = self.get_serializer()
+        serializer.is_valid(raise_exception=True)
+        team.owner = serializer.validated_data['profile']
+        team.save(update_fields=['owner'])
+        return Response(TeamSerializer(team).data)
 
 
 class TeamTaskCommentsRedirectView(RedirectView):
@@ -130,3 +144,36 @@ class MembershipViewSet(viewsets.ModelViewSet):
         if self.action in ['update', 'partial_update']:
             return MembershipRoleChangeSerializer
         return super().get_serializer_class()
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        team = instance.team
+        if instance.profile != team.owner:
+            instance.delete()
+            return
+
+        # Ищем нового по всем юзерам, неважно с какой ролью. У команды ДОЛЖЕН быть владелец
+        new_owner = (
+            Membership.objects
+            .filter(team=team)
+            .exclude(pk=instance.pk)
+            .annotate(
+                role_priority=Case(
+                    When(role=Roles.admin, then=Value(3)),
+                    When(role=Roles.manager, then=Value(2)),
+                    When(role=Roles.member, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by('-role_priority', 'id')
+            .first()
+        )
+
+        if new_owner is None:
+            team.delete()
+            return
+
+        team.owner = new_owner.profile
+        team.save(update_fields=['owner'])
+        instance.delete()
