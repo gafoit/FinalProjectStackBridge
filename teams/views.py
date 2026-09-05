@@ -20,7 +20,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
-        if self.action in ('list', 'retrieve', 'update', 'partial_update', 'regen_invite_code'):
+        if self.action in ('list', 'retrieve', 'update', 'partial_update', 'regen_invite_code', 'destroy'):
             return Team.objects.filter(profiles=self.request.user.profile)
         return Team.objects.none()
 
@@ -100,7 +100,7 @@ class TeamTaskCommentsRedirectView(RedirectView):
         task_id = kwargs['task_id']
         team_id = kwargs['team_id']
         base_url = reverse('task-comments-list', kwargs={'task_pk': task_id})
-        #return f'{base_url}?team_pk={team_id}'
+        # return f'{base_url}?team_pk={team_id}'
         return f'{base_url}'
 
 
@@ -120,8 +120,3 @@ class MembershipViewSet(viewsets.ModelViewSet):
         if self.action in ['update', 'partial_update']:
             return MembershipRoleChangeSerializer
         return super().get_serializer_class()
-
-    # def get_object(self):
-    #    team_id = self.kwargs.get('team_pk')
-    #    profile_id = self.kwargs.get('profile_id')
-    #    return self.get_queryset().get(team_id=team_id, profile_id=profile_id)

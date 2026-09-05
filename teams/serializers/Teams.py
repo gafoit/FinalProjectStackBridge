@@ -6,6 +6,13 @@ from teams.models import Team, Membership, Roles
 
 
 class TeamShortSerializer(serializers.ModelSerializer):
+    name = serializers.CharField()
+
+    def validate_name(self, name):
+        if name == "":
+            raise serializers.ValidationError("Name cannot be empty")
+        return name
+
     class Meta:
         model = Team
         fields = ('id', 'name')

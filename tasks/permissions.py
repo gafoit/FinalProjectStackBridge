@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from teams.models import Membership, Roles
 
@@ -33,4 +33,33 @@ class TaskPermissions(BasePermission):
                 return True
 
             return membership.role == Roles.member
+        return False
+
+
+class TaskCommentPermissions(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        profile = request.user.profile
+
+        membership = obj.task.team.memberships.filter(
+            profile=profile,
+        ).first()
+
+        if membership is None:
+            return False
+
+        if request.method in SAFE_METHODS:
+            return True
+
+        if request.method in ('PUT', 'PATCH'):
+            return obj.author == profile
+
+        if request.method == 'DELETE':
+            return membership.role in (
+                Roles.admin,
+                Roles.owner,
+            )
+
         return False

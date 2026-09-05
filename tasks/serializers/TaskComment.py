@@ -23,4 +23,11 @@ class TaskCommentShortSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TaskComment
-        fields = ('author', 'text', 'created_at')
+        fields = ('id', 'author', 'text')
+
+
+class TaskCommentCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskComment
+        fields = ('text',)
+

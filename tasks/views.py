@@ -1,13 +1,14 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from tasks.models import Task, TaskStatus, TaskComment, TaskRating
-from tasks.permissions import TaskPermissions
+from tasks.permissions import TaskPermissions, TaskCommentPermissions
 # from tasks.permissions import CanEditTask
 from tasks.serializers import TaskSerializer, TaskUpdateSerializer, TaskCreateSerializer
-from tasks.serializers.TaskComment import TaskCommentSerializer, TaskCommentShortSerializer
+from tasks.serializers.TaskComment import TaskCommentSerializer, TaskCommentShortSerializer, TaskCommentCreateSerializer
 from teams.models import Team
 
 
@@ -65,13 +66,45 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 
 class TaskCommentViewSet(viewsets.ModelViewSet):
+    permission_classes = [TaskCommentPermissions]
+
+    def get_task(self):
+        task = get_object_or_404(
+            Task.objects.select_related('team'),
+            pk=self.kwargs['task_pk'],
+        )
+
+        if not task.team.memberships.filter(
+                profile=self.request.user.profile,
+        ).exists():
+            raise PermissionDenied(
+                'You are not a member of this team.'
+            )
+
+        return task
+
     def get_queryset(self):
-        queryset = TaskComment.objects.filter(task=self.kwargs['task_pk'])
-        return queryset
+        task = self.get_task()
+
+        return (
+            TaskComment.objects
+            .filter(task=task)
+            .select_related('author')
+        )
 
     def get_serializer_class(self):
-        if self.action in ['retrieve']:
-            return TaskCommentSerializer
-        else:
-            return TaskCommentShortSerializer
+        if self.action in ('create', 'update', 'partial_update'):
+            return TaskCommentCreateSerializer
 
+        if self.action == 'retrieve':
+            return TaskCommentSerializer
+
+        return TaskCommentShortSerializer
+
+    def perform_create(self, serializer):
+        task = self.get_task()
+
+        serializer.save(
+            author=self.request.user.profile,
+            task=task,
+        )
