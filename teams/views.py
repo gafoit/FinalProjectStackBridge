@@ -135,6 +135,16 @@ class TeamTaskCommentsRedirectView(RedirectView):
         return f'{base_url}'
 
 
+class TeamTaskRatingRedirectView(RedirectView):
+    permanent = False  # 302
+
+    def get_redirect_url(self, *args, **kwargs):
+        task_id = kwargs['task_id']
+        base_url = reverse('task-ratings-list', kwargs={'task_pk': task_id})
+        # return f'{base_url}?team_pk={team_id}'
+        return f'{base_url}'
+
+
 class MembershipViewSet(viewsets.ModelViewSet):
     serializer_class = MembershipSerializer
     lookup_field = 'profile_id'

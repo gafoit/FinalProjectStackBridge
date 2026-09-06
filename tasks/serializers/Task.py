@@ -34,6 +34,12 @@ class TaskSerializer(serializers.ModelSerializer):
         )
 
 
+class TaskShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        exclude = ('description',)
+
+
 class TaskCreateSerializer(serializers.ModelSerializer):
     assignee = serializers.PrimaryKeyRelatedField(
         queryset=Profile.objects.all(),
@@ -104,6 +110,15 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
             'assignee': {'required': False},
             'due_date': {'required': False},
         }
+
+    def validate_status(self, value):
+        # если она Done - то она Done, не нравится - создавай новую задачу на исправление этой
+        if self.instance.status == TaskStatus.DONE and value != TaskStatus.DONE:
+            raise serializers.ValidationError(
+                'Нельзя изменить статус завершённой задачи.'
+            )
+
+        return value
 
     def validate(self, attrs):
         request = self.context.get('request')

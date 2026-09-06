@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
+from tasks.models import TaskStatus
 from teams.models import Membership, Roles
 
 
@@ -59,5 +60,52 @@ class TaskCommentPermissions(BasePermission):
 
         if request.method == 'DELETE':
             return membership.role == Roles.admin or obj.task.team.owner == profile
+
+        return False
+
+
+class TaskRatingPermissions(BasePermission):
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
+        profile = request.user.profile
+
+        if view.kwargs.get('task_pk') is not None:
+            task = view.get_task()
+
+            membership = Membership.objects.filter(
+                team=task.team,
+                profile=profile,
+            ).first()
+
+            if membership is None:
+                return False
+
+            if view.action == 'create':
+                return (
+                        task.status == TaskStatus.DONE
+                        and (
+                                task.team.owner == profile
+                                or membership.role in (Roles.manager, Roles.admin)
+                        )
+                )
+
+            return True
+
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        profile = request.user.profile
+
+        if obj.task.team.memberships.filter(profile=profile).exists() is False:
+            return False
+
+        if view.action in ('retrieve', 'list'):
+            return True
+
+        if view.action in ('update', 'partial_update', 'destroy'):
+            return obj.author == profile
 
         return False

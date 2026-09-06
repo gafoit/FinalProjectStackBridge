@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from tasks.models import Task
+from tasks.models import Task, TaskRating
 from tasks.models import TaskComment
 
 # Register your models here.
@@ -8,3 +8,4 @@ from tasks.models import TaskComment
 
 admin.site.register(Task)
 admin.site.register(TaskComment)
+admin.site.register(TaskRating)
