@@ -17,8 +17,7 @@ class MembershipPerms(BasePermission):
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        if view.action == 'transfer_ownership':
-            return obj.team.owner == request.user.profile
+
         current = Membership.objects.filter(
             team=obj.team,
             profile=request.user.profile,
@@ -31,6 +30,9 @@ class MembershipPerms(BasePermission):
         target_priority = role_priority[obj.role]
 
         if view.action in ('update', 'partial_update'):
+            # владелец ВСЕГДА админ
+            if obj.profile == obj.team.owner:
+                return False
             new_role = request.data.get('role')
 
             if new_role is None:
@@ -81,7 +83,8 @@ class TeamPerms(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         profile = request.user.profile
-
+        if view.action == 'transfer_ownership':
+            return obj.owner == profile
         try:
             current_membership = Membership.objects.get(team=obj, profile=profile)
         except Membership.DoesNotExist:

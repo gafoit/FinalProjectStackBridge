@@ -22,7 +22,9 @@ class TaskViewSet(viewsets.ModelViewSet):
         team_id = self.kwargs.get('team_pk')
         if team_id is None:
             team_id = self.request.GET.get('team')
-        queryset = queryset.filter(team_id=team_id, team__memberships__profile=self.request.user.profile)
+        queryset = queryset.filter(team__memberships__profile=self.request.user.profile)
+        if team_id is not None:
+            queryset = queryset.filter(team_id=team_id)
         # Чтобы можно было отделить таски которые мне нужно выполнить и которые я сделал для других
         assigned = self.request.GET.get('assigned')
         created = self.request.GET.get('created')
@@ -40,7 +42,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_serializer_class(self):
-        if self.action == 'update':
+        if self.action in ('update', 'partial_update'):
             return TaskUpdateSerializer
         elif self.action == 'create':
             return TaskCreateSerializer

@@ -53,8 +53,6 @@ class TaskCreateSerializer(serializers.ModelSerializer):
             .filter(memberships__team=team)
         )
 
-
-
     class Meta:
         model = Task
         fields = (
@@ -83,17 +81,11 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        team = get_object_or_404(
-            Team,
-            pk=self.context['view'].kwargs['team_pk'],
-        )
-
-        self.fields['assignee'].queryset = (
-            Profile.objects
-            .filter(memberships__team=team)
-        )
-
+        if self.instance is not None:
+            team = self.instance.team
+            self.fields['assignee'].queryset = (
+                Profile.objects.filter(memberships__team=team)
+            )
 
     class Meta:
         model = Task

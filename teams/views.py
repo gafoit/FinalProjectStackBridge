@@ -32,7 +32,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             return TeamShortSerializer
-        elif self.action in 'create':
+        elif self.action == 'create':
             return TeamCreateSerializer
         elif self.action in ['retrieve', 'regen_invite_code']:
             if self.action == 'retrieve':
@@ -111,9 +111,16 @@ class TeamViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def transfer_ownership(self, request, *args, **kwargs):
         team = self.get_object()
-        serializer = self.get_serializer()
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        team.owner = serializer.validated_data['profile']
+        new_owner = serializer.validated_data['profile']
+
+        Membership.objects.filter(
+            team=team,
+            profile=new_owner,
+        ).update(role=Roles.admin)
+
+        team.owner = new_owner
         team.save(update_fields=['owner'])
         return Response(TeamSerializer(team).data)
 
@@ -176,4 +183,6 @@ class MembershipViewSet(viewsets.ModelViewSet):
 
         team.owner = new_owner.profile
         team.save(update_fields=['owner'])
+        new_owner.role = Roles.admin
+        new_owner.save(update_fields=['role'])
         instance.delete()
