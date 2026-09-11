@@ -65,34 +65,33 @@ class TaskCommentPermissions(BasePermission):
 
 
 class TaskRatingPermissions(BasePermission):
-
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
 
-        profile = request.user.profile
+        team_id = view.kwargs.get('team_pk')
 
-        if view.kwargs.get('task_pk') is not None:
+        if team_id is None:
+            return False
+
+        membership = Membership.objects.filter(
+            team_id=team_id,
+            profile=request.user.profile,
+        ).first()
+
+        if membership is None:
+            return False
+
+        if view.action == 'create':
             task = view.get_task()
 
-            membership = Membership.objects.filter(
-                team=task.team,
-                profile=profile,
-            ).first()
-
-            if membership is None:
-                return False
-
-            if view.action == 'create':
-                return (
-                        task.status == TaskStatus.DONE
-                        and (
-                                task.team.owner == profile
-                                or membership.role in (Roles.manager, Roles.admin)
-                        )
+            return (
+                task.status == TaskStatus.DONE
+                and (
+                    task.team.owner == request.user.profile
+                    or membership.role in (Roles.manager, Roles.admin)
                 )
-
-            return True
+            )
 
         return True
 
