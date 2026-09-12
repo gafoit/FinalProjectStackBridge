@@ -45,4 +45,4 @@ class ProfileViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(HTTP_204_NO_CONTENT)
+        return Response(serializer.data)
