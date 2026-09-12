@@ -64,31 +64,44 @@ class TaskCommentPermissions(BasePermission):
         return False
 
 
+
 class TaskRatingPermissions(BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
 
-        team_id = view.kwargs.get('team_pk')
+        profile = request.user.profile
+        task_id = view.kwargs.get('task_pk')
 
-        if team_id is None:
-            return False
+        # Глобальный endpoint:
+        # /evaluations/?received=me
+        # /evaluations/?created=me
+        if task_id is None:
+            if view.action != 'list':
+                return False
+
+            # Без фильтра нельзя отдавать все оценки системы.
+            received = request.GET.get('received')
+            created = request.GET.get('created')
+
+            return received == 'me' or created == 'me'
+
+        # Task-scoped endpoint
+        task = view.get_task()
 
         membership = Membership.objects.filter(
-            team_id=team_id,
-            profile=request.user.profile,
+            team=task.team,
+            profile=profile,
         ).first()
 
         if membership is None:
             return False
 
         if view.action == 'create':
-            task = view.get_task()
-
             return (
                 task.status == TaskStatus.DONE
                 and (
-                    task.team.owner == request.user.profile
+                    task.team.owner == profile
                     or membership.role in (Roles.manager, Roles.admin)
                 )
             )
@@ -98,7 +111,9 @@ class TaskRatingPermissions(BasePermission):
     def has_object_permission(self, request, view, obj):
         profile = request.user.profile
 
-        if obj.task.team.memberships.filter(profile=profile).exists() is False:
+        if not obj.task.team.memberships.filter(
+            profile=profile,
+        ).exists():
             return False
 
         if view.action in ('retrieve', 'list'):
@@ -108,3 +123,4 @@ class TaskRatingPermissions(BasePermission):
             return obj.author == profile
 
         return False
+

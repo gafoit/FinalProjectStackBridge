@@ -67,28 +67,25 @@ class MembershipPerms(BasePermission):
 
 class TeamPerms(BasePermission):
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
-        if view.action == 'retrieve':
-            team_id = view.kwargs.get('pk')
-
-            if not team_id:
-                return False
-            team = get_object_or_404(Team, pk=team_id)
-            return Membership.objects.filter(
-                team=team,
-                profile=request.user.profile
-            ).exists()
-        return request.user and request.user.is_authenticated
+        return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
         profile = request.user.profile
+
+        if view.action == 'join':
+            return True
+
         if view.action == 'transfer_ownership':
             return obj.owner == profile
+
         try:
-            current_membership = Membership.objects.get(team=obj, profile=profile)
+            current_membership = Membership.objects.get(
+                team=obj,
+                profile=profile,
+            )
         except Membership.DoesNotExist:
-            return view.action == 'join'
+            return False
+
         if view.action == 'regen_invite_code':
             return (
                     obj.owner == profile
@@ -96,7 +93,12 @@ class TeamPerms(BasePermission):
             )
 
         if view.action in ('update', 'partial_update'):
-            return current_membership.role == Roles.admin or obj.owner == profile
+            return (
+                    current_membership.role == Roles.admin
+                    or obj.owner == profile
+            )
+
         if view.action == 'destroy':
             return obj.owner == profile
+
         return True

@@ -56,12 +56,13 @@ class MeetupCreateSerializer(serializers.ModelSerializer):
 
         user_profile = self.context['request'].user.profile
 
-        self.fields['participants'].queryset = (
+        self.fields['participants'].child_relation.queryset = (
             Profile.objects
             .filter(memberships__team=team)
             .exclude(pk=user_profile.pk)
             .distinct()
         )
+
 
     class Meta:
         model = Meetup
@@ -101,12 +102,13 @@ class MeetupUpdateSerializer(serializers.ModelSerializer):
 
         user_profile = self.context['request'].user.profile
 
-        self.fields['participants'].queryset = (
+        self.fields['participants'].child_relation.queryset = (
             Profile.objects
             .filter(memberships__team=team)
             .exclude(pk=user_profile.pk)
             .distinct()
         )
+
 
     def validate(self, attrs):
         if self.instance.is_cancelled:

@@ -19,12 +19,12 @@ class ProfileDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ('username','email')
+        fields = ('username', 'email')
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=150)
-    email = serializers.EmailField(allow_null=True,allow_blank=True)
+    email = serializers.EmailField(allow_null=True, allow_blank=True)
     password1 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
 
@@ -52,3 +52,45 @@ class ProfileCreateSerializer(serializers.ModelSerializer):
         new_profile = Profile.objects.create(user=new_user)
         return new_profile
 
+
+class ProfilePasswordChangeSerializer(serializers.ModelSerializer):
+    old_password = serializers.CharField(
+        style={'input_type': 'password'},
+        write_only=True,
+    )
+    new_password1 = serializers.CharField(
+        style={'input_type': 'password'},
+        write_only=True,
+    )
+    new_password2 = serializers.CharField(
+        style={'input_type': 'password'},
+        write_only=True,
+    )
+
+    class Meta:
+        model = Profile
+        fields = (
+            'old_password',
+            'new_password1',
+            'new_password2',
+        )
+
+    def validate(self, attrs):
+        if attrs['new_password1'] != attrs['new_password2']:
+            raise serializers.ValidationError({
+                'new_password1': 'Пароли не совпадают',
+                'new_password2': 'Пароли не совпадают',
+            })
+
+        if not self.instance.user.check_password(attrs['old_password']):
+            raise serializers.ValidationError({
+                'old_password': 'Старый пароль введён неверно',
+            })
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        user = instance.user
+        user.set_password(validated_data['new_password1'])
+        user.save(update_fields=['password'])
+        return instance

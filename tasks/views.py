@@ -129,27 +129,20 @@ class TaskRatingViewSet(viewsets.ModelViewSet):
         return task
 
     def get_queryset(self):
-        queryset = (
-            TaskRating.objects
-            .select_related('author', 'task', 'task__team', 'task__assignee')
-        )
+        queryset = (TaskRating.objects.select_related('author', 'task', 'task__team', 'task__assignee', ))
 
         task_id = self.kwargs.get('task_pk')
-        if task_id is None:
-            task_id = self.request.GET.get('task')
         if task_id is not None:
             queryset = queryset.filter(task_id=task_id)
-        received = self.request.GET.get('received')
-        created = self.request.GET.get('created')
-
-        if received == 'me':
-            queryset = queryset.filter(
-                task__assignee=self.request.user.profile,
-            )
-        if created == 'me':
-            queryset = queryset.filter(
-                author=self.request.user.profile,
-            )
+        else:
+            received = self.request.GET.get('received')
+            created = self.request.GET.get('created')
+            if received == 'me':
+                queryset = queryset.filter(task__assignee=self.request.user.profile, )
+            elif created == 'me':
+                queryset = queryset.filter(author=self.request.user.profile, )
+            else:
+                queryset = queryset.none()
         return queryset
 
     def get_serializer_class(self):

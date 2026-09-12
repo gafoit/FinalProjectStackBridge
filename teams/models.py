@@ -32,6 +32,9 @@ class Team(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        ordering = ['name']
+
 
 class Membership(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='memberships')
@@ -48,3 +51,4 @@ class Membership(models.Model):
                 name='unique_team_profile',
             ),
         ]
+        ordering = ['team__id', 'profile__id']
