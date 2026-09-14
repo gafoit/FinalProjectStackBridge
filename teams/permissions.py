@@ -1,7 +1,6 @@
-from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import BasePermission
 
-from teams.models import Membership, Roles, role_priority, Team
+from teams.models import Membership, Roles, role_priority
 
 
 class MembershipPerms(BasePermission):

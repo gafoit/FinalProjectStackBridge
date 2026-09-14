@@ -1,12 +1,11 @@
 from django.db import transaction
 from django.db.models import Case, When, Value, IntegerField
 from django.db.models.functions import uuid
-from rest_framework.reverse import reverse
 from django.views.generic import RedirectView
 from rest_framework import viewsets, serializers, status
 from rest_framework.decorators import action
-from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
 from teams.models import Team, Membership, Roles
 from teams.permissions import MembershipPerms, TeamPerms

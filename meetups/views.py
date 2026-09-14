@@ -1,22 +1,13 @@
 from django.db.models import Q
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from meetups.models import Meetup
 from meetups.permissions import MeetupPermission
 from meetups.serializers.Meetup import MeetupShortSerializer, MeetupSerializer, MeetupCreateSerializer, \
     MeetupUpdateSerializer
-from tasks.models import Task
 from teams.models import Team
-
-from django.db.models import Q
-from rest_framework.exceptions import ValidationError
-
-from meetups.models import Meetup
 
 
 def validate_meeting_availability(

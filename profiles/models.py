@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
 from django.db import models
-from django.dispatch import receiver
 
 
 # Create your models here.
@@ -8,7 +7,8 @@ from django.dispatch import receiver
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    teams = models.ManyToManyField('teams.Team', through='teams.Membership', related_name='profiles')
+    teams = models.ManyToManyField('teams.Team', through='teams.Membership', related_name='profiles',
+                                   verbose_name='Команды')
 
     class Meta:
         verbose_name = 'Профиль'

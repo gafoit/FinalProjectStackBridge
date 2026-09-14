@@ -33,18 +33,22 @@ class Team(models.Model):
         return self.name
 
     class Meta:
+        verbose_name = 'Команда'
+        verbose_name_plural = 'Команды'
         ordering = ['name']
 
 
 class Membership(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='memberships')
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='memberships')
-    role = models.TextField(max_length=7, choices=Roles.choices, default=Roles.member)
+    role = models.CharField(max_length=7, choices=Roles.choices, default=Roles.member)
 
     def __str__(self):
         return f'{self.team.name}[{self.profile.username}: {self.role}]'
 
     class Meta:
+        verbose_name = 'Участник команды'
+        verbose_name_plural = 'Участники команд'
         constraints = [
             models.UniqueConstraint(
                 fields=('team', 'profile'),
