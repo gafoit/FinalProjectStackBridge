@@ -1,11 +1,59 @@
 from datetime import timedelta
 
-from django.utils import timezone
-
 import pytest
+from django.utils import timezone
+from rest_framework import serializers
 
-from tasks.models import TaskStatus, Task
+from tasks.models import TaskStatus, Task, TaskRating
+from tasks.serializers import TaskUpdateSerializer
+from tasks.views import calculate_average_score
 from teams.models import Roles
+
+
+def test_avg_rating(task, profiles):
+    task.status = TaskStatus.DONE
+    task.save()
+    assert calculate_average_score(task) == 0
+    TaskRating.objects.create(task=task, author=profiles['manager'], score=5)
+    assert calculate_average_score(task) == 5
+    TaskRating.objects.create(task=task, author=profiles['admin'], score=2)
+    assert calculate_average_score(task) == 3.5
+
+
+@pytest.mark.parametrize(
+    "current_status,new_status",
+    [
+        (TaskStatus.OPEN, TaskStatus.OPEN),
+        (TaskStatus.OPEN, TaskStatus.IN_PROGRESS),
+        (TaskStatus.IN_PROGRESS, TaskStatus.OPEN),
+        (TaskStatus.IN_PROGRESS, TaskStatus.IN_PROGRESS),
+        (TaskStatus.IN_PROGRESS, TaskStatus.DONE),
+        (TaskStatus.DONE, TaskStatus.DONE),
+    ],
+)
+def test_valid_status_transition(task, current_status, new_status):
+    task.status = current_status
+
+    serializer = TaskUpdateSerializer(instance=task)
+
+    assert serializer.validate_status(new_status) == new_status
+
+
+@pytest.mark.parametrize(
+    "current_status,new_status",
+    [
+        (TaskStatus.OPEN, TaskStatus.DONE),
+        (TaskStatus.DONE, TaskStatus.OPEN),
+        (TaskStatus.DONE, TaskStatus.IN_PROGRESS),
+    ],
+)
+def test_invalid_status_transition(task, current_status, new_status):
+    task.status = current_status
+
+    serializer = TaskUpdateSerializer(instance=task)
+
+    with pytest.raises(serializers.ValidationError):
+        serializer.validate_status(new_status)
 
 
 class TestTasks:

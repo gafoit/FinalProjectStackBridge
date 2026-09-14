@@ -112,10 +112,24 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
         }
 
     def validate_status(self, value):
-        # если она Done - то она Done, не нравится - создавай новую задачу на исправление этой
-        if self.instance.status == TaskStatus.DONE and value != TaskStatus.DONE:
+        allowed_transitions = {
+            TaskStatus.OPEN: {
+                TaskStatus.OPEN,
+                TaskStatus.IN_PROGRESS,
+            },
+            TaskStatus.IN_PROGRESS: {
+                TaskStatus.OPEN,
+                TaskStatus.IN_PROGRESS,
+                TaskStatus.DONE,
+            },
+            TaskStatus.DONE: {
+                TaskStatus.DONE,
+            },
+        }
+
+        if value not in allowed_transitions[self.instance.status]:
             raise serializers.ValidationError(
-                'Нельзя изменить статус завершённой задачи.'
+                f'Недопустимый переход статуса задачи: {self.instance.status} -> {value}.'
             )
 
         return value

@@ -49,8 +49,7 @@ class ProfileCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'password': 'Пароли не совпадают'})
         user_data['password'] = password1
         new_user = User.objects.create_user(**user_data)
-        new_profile = Profile.objects.create(user=new_user)
-        return new_profile
+        return new_user.profile
 
 
 class ProfilePasswordChangeSerializer(serializers.ModelSerializer):

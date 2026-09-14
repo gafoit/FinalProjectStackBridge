@@ -31,11 +31,9 @@ def auth_client(client):
 def create_profile(db):
     def factory(username):
         # password не даём потому что так дольше работает
-        return Profile.objects.create(
-            user=User.objects.create_user(
+        return User.objects.create_user(
                 username=username,
-            )
-        )
+            ).profile
 
     return factory
 
@@ -80,7 +78,7 @@ def create_membership(db, team):
     return factory
 
 @pytest.fixture
-def task(team, profiles):
+def task(team, profiles)->Task:
     return Task.objects.create(
         title='Test task',
         description='Test description',

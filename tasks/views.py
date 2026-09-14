@@ -16,6 +16,10 @@ from teams.models import Team
 
 
 # Create your views here.
+def calculate_average_score(task):
+    return TaskRating.objects.filter(task=task).aggregate(
+        Avg("score", default=0)
+    )["score__avg"]
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -160,11 +164,6 @@ class TaskRatingViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='avg')
     def avg_score(self, request, *args, **kwargs):
-        avg_rating = (
-            TaskRating.objects
-            .filter(task=self.get_task())
-            .aggregate(Avg("score", default=0))
-        )
         return Response({
-            'average_score': avg_rating['score__avg'],
+            'average_score': calculate_average_score(self.get_task()),
         })
