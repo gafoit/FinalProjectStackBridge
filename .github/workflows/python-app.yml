@@ -1,4 +1,4 @@
-name: FP
+name: Django
 
 on:
   push:
@@ -44,22 +44,26 @@ jobs:
 
       - name: Run migrations
         env:
-          SECRET_KEY: test-secret-key
+          DJANGO_SECRET_KEY: test-secret-key
+          DJANGO_DEBUG: "False"
+          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
           POSTGRES_DB: final_project
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
+          POSTGRES_PORT: "5432"
         run: |
           python manage.py migrate
 
       - name: Run tests
         env:
-          SECRET_KEY: test-secret-key
+          DJANGO_SECRET_KEY: test-secret-key
+          DJANGO_DEBUG: "False"
+          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
           POSTGRES_DB: final_project
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
+          POSTGRES_PORT: "5432"
         run: |
           pytest
