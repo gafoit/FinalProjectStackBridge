@@ -66,4 +66,4 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: "5432"
         run: |
-          pytest
+          pytest --cov=. --cov-report=term-missing --cov-fail-under=80
